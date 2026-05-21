@@ -1,0 +1,26 @@
+{
+  "name": "boba",
+  "version": "1.0.0",
+  "description": "Discover bubble tea shops on an interactive map with Yelp data, saved favorites, and distance-based search.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ricochen123/bobamap.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ricochen123/bobamap/issues"
+  },
+  "homepage": "https://github.com/ricochen123/bobamap#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.9.1"
+  }
+}
