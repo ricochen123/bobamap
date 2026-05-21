@@ -120,6 +120,3 @@ See [docs/YELP_API.md](docs/YELP_API.md) and [docs/AUTH.md](docs/AUTH.md) for mo
 - JWT auth, favorites, shop detail with reviews
 - Dark mode, mobile drawer, Yelp response caching
 
-## License
-
-MIT
