@@ -34,7 +34,7 @@ test.describe('BobaMap', () => {
     await page.getByLabel(/username/i).fill('fakeuser');
     await page.getByLabel(/password/i).fill('wrongpassword');
     await page.getByRole('button', { name: /log in/i }).click();
-    await expect(page.getByText(/invalid|incorrect|error/i)).toBeVisible();
+    await expect(page.getByText(/no active account found/i)).toBeVisible();
   });
 
 });

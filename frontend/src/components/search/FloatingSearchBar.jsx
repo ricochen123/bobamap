@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearch } from "../../context/SearchContext";
 import { useDebounce } from "../../hooks/useDebounce";
-import { suggestLocations } from "../../services/geocodeService";
+import { geocodeLocation, suggestLocations } from "../../services/geocodeService";
 
 const MODES = [
   { id: "nearby", label: "Near me" },
@@ -12,22 +13,27 @@ const SEARCH_HINTS = {
   area: "City, state or ZIP code",
 };
 
-export default function FloatingSearchBar({ onSearch, onOpenFilters }) {
-  const [mode, setMode] = useState("nearby");
-  const [query, setQuery] = useState("");
+export default function FloatingSearchBar({ variant = "floating" }) {
+  const { search, handleSearch, geoError, useMyLocation, setFilterOpen } = useSearch();
+  const [mode, setMode] = useState(search.mode);
+  const [query, setQuery] = useState(search.location || "");
   const debouncedSuggest = useDebounce(query, 300);
 
   const [suggestions, setSuggestions] = useState([]);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
+  const [suggestionsLocked, setSuggestionsLocked] = useState(false);
 
   const blurTimerRef = useRef(null);
-  const onSearchRef = useRef(onSearch);
-  onSearchRef.current = onSearch;
+
+  useEffect(() => {
+    setMode(search.mode);
+    setQuery(search.location || "");
+  }, [search.mode, search.location]);
 
   const emit = (loc, m, geocoded = null) => {
-    onSearchRef.current?.({
+    handleSearch({
       mode: m,
       location: loc ?? null,
       geocoded: geocoded ?? null,
@@ -35,13 +41,14 @@ export default function FloatingSearchBar({ onSearch, onOpenFilters }) {
   };
 
   useEffect(() => {
-    if (mode === "nearby") {
-      onSearchRef.current?.({ mode: "nearby", location: null, geocoded: null });
-    }
-  }, [mode]);
-
-  useEffect(() => {
     if (mode !== "area") {
+      setSuggestions([]);
+      setSuggestOpen(false);
+      setSuggestionsLocked(false);
+      return;
+    }
+
+    if (suggestionsLocked) {
       setSuggestions([]);
       setSuggestOpen(false);
       return;
@@ -72,7 +79,7 @@ export default function FloatingSearchBar({ onSearch, onOpenFilters }) {
     return () => {
       cancelled = true;
     };
-  }, [mode, debouncedSuggest]);
+  }, [mode, debouncedSuggest, suggestionsLocked]);
 
   useEffect(() => () => clearTimeout(blurTimerRef.current), []);
 
@@ -82,6 +89,7 @@ export default function FloatingSearchBar({ onSearch, onOpenFilters }) {
   };
 
   const selectSuggestion = (item) => {
+    setSuggestionsLocked(true);
     setQuery(item.label);
     setSuggestions([]);
     closeSuggestions();
@@ -97,19 +105,22 @@ export default function FloatingSearchBar({ onSearch, onOpenFilters }) {
     setSuggestions([]);
     closeSuggestions();
     setQuery("");
+    setSuggestionsLocked(false);
     if (next === "nearby") {
-      emit(null, "nearby");
+      useMyLocation();
     } else {
       emit(null, "area");
     }
   };
 
-  const submitArea = () => {
+  const submitArea = async () => {
     const trimmed = query.trim();
-    if (mode === "area" && trimmed) {
-      closeSuggestions();
-      emit(trimmed, "area", null);
-    }
+    if (mode !== "area" || !trimmed) return;
+
+    setSuggestionsLocked(true);
+    closeSuggestions();
+    const geo = await geocodeLocation(trimmed);
+    emit(trimmed, "area", geo);
   };
 
   const handleInputBlur = () => {
@@ -152,9 +163,17 @@ export default function FloatingSearchBar({ onSearch, onOpenFilters }) {
     }
   };
 
+  const isFloating = variant === "floating";
+
   return (
-    <div className="pointer-events-none absolute left-0 right-0 top-4 z-20 flex justify-center px-4">
-      <div className="pointer-events-auto w-full max-w-xl space-y-2">
+    <div
+      className={
+        isFloating
+          ? "pointer-events-none absolute left-0 right-0 top-4 z-20 flex justify-center px-4"
+          : "w-full"
+      }
+    >
+      <div className={`${isFloating ? "pointer-events-auto" : ""} w-full max-w-xl space-y-2`}>
         <div className="card flex gap-1 p-1 shadow-lg">
           {MODES.map((m) => (
             <button
@@ -172,14 +191,28 @@ export default function FloatingSearchBar({ onSearch, onOpenFilters }) {
           ))}
         </div>
 
+        {geoError && (
+          <p
+            role="alert"
+            className="rounded-lg bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700 dark:bg-red-900/30 dark:text-red-300"
+          >
+            {geoError}
+          </p>
+        )}
+
         <div className="flex gap-2">
           <div className="relative flex flex-1 flex-col">
             <div className="card flex items-center gap-2 px-4 py-2 shadow-lg">
-              <span className="text-lg">🔍</span>
+              <span className="text-lg" aria-hidden>
+                ⌕
+              </span>
               <input
                 type="text"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setSuggestionsLocked(false);
+                  setQuery(e.target.value);
+                }}
                 onKeyDown={(e) => {
                   if (mode === "area") handleAreaKeyDown(e);
                 }}
@@ -192,17 +225,6 @@ export default function FloatingSearchBar({ onSearch, onOpenFilters }) {
                 aria-expanded={mode === "area" ? suggestOpen : undefined}
                 className="flex-1 bg-transparent text-sm outline-none disabled:opacity-60 dark:text-white"
               />
-              {mode === "area" && (
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={submitArea}
-                  disabled={!query.trim()}
-                  className="rounded-lg bg-boba-500 px-3 py-1 text-xs font-semibold text-white disabled:opacity-40"
-                >
-                  Go
-                </button>
-              )}
             </div>
 
             {mode === "area" && suggestOpen && (
@@ -238,11 +260,13 @@ export default function FloatingSearchBar({ onSearch, onOpenFilters }) {
           </div>
           <button
             type="button"
-            onClick={onOpenFilters}
+            onClick={() => setFilterOpen(true)}
             className="card flex h-12 w-12 shrink-0 items-center justify-center shadow-lg"
             aria-label="Open filters"
           >
-            ⚙️
+            <span className="text-lg" aria-hidden>
+              ⚙
+            </span>
           </button>
         </div>
       </div>

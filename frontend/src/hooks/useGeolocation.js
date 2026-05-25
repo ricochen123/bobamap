@@ -1,36 +1,48 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
-const DEFAULT = { lat: 37.7749, lng: -122.4194 };
+export const LOCATION_DENIED_MESSAGE =
+  "Location access was denied. Enable location permissions for this site in your browser settings (lock icon in the address bar), then click Use My Location again.";
 
 export function useGeolocation() {
   const [position, setPosition] = useState(null);
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setPosition(DEFAULT);
-      setError("Geolocation not supported");
-      setLoading(false);
-      return;
+      setError("Geolocation is not supported in this browser.");
+      return Promise.resolve(null);
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setPosition({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
-        setLoading(false);
-      },
-      () => {
-        setPosition(DEFAULT);
-        setError("Location unavailable");
-        setLoading(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    setLoading(true);
+    setError(null);
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const coords = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          };
+          setPosition(coords);
+          setLoading(false);
+          resolve(coords);
+        },
+        (err) => {
+          setLoading(false);
+          if (err.code === err.PERMISSION_DENIED) {
+            setError(LOCATION_DENIED_MESSAGE);
+          } else if (err.code === err.TIMEOUT) {
+            setError("Location request timed out. Try again.");
+          } else {
+            setError("Could not get your location. Try again.");
+          }
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    });
   }, []);
 
-  return { position, error, loading };
+  return { position, error, loading, requestLocation };
 }

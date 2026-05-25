@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { formatApiError } from "../utils/format";
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -28,13 +29,7 @@ export default function RegisterPage() {
       await register(form);
       navigate("/profile");
     } catch (err) {
-      const data = err.response?.data;
-      setError(
-        data?.password_confirm?.[0] ||
-          data?.username?.[0] ||
-          data?.detail ||
-          "Registration failed"
-      );
+      setError(formatApiError(err, "Registration failed"));
     } finally {
       setLoading(false);
     }
@@ -58,7 +53,14 @@ export default function RegisterPage() {
         </label>
         <label className="mt-4 block">
           <span className="text-sm font-medium">Password</span>
-          <input type="password" className="input-field mt-1" value={form.password} onChange={set("password")} required />
+          <input
+            type="password"
+            className="input-field mt-1"
+            value={form.password}
+            onChange={set("password")}
+            required
+            autoComplete="new-password"
+          />
         </label>
         <label className="mt-4 block">
           <span className="text-sm font-medium">Confirm password</span>

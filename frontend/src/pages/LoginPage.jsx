@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import BobaIcon from "../components/ui/BobaIcon";
 import { useAuth } from "../context/AuthContext";
+import { formatApiError } from "../utils/format";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -18,7 +20,7 @@ export default function LoginPage() {
       await login(username, password);
       navigate("/");
     } catch (err) {
-      setError(err.response?.data?.detail || "Invalid credentials");
+      setError(formatApiError(err, "Invalid credentials"));
     } finally {
       setLoading(false);
     }
@@ -27,7 +29,10 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-gradient-to-br from-boba-50 via-white to-taro-400/10 p-4 dark:from-gray-950 dark:via-gray-900">
       <form onSubmit={handleSubmit} className="card w-full max-w-md p-8 animate-fade-in">
-        <h1 className="font-display text-2xl font-bold">Welcome back 🧋</h1>
+        <h1 className="flex items-center gap-2 font-display text-2xl font-bold">
+          <span>Welcome back</span>
+          <BobaIcon className="h-7 w-7 shrink-0" />
+        </h1>
         <p className="mt-1 text-gray-500">Log in to save your favorite boba spots</p>
 
         {error && (

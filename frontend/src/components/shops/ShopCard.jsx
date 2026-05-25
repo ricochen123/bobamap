@@ -8,6 +8,7 @@ export default function ShopCard({
   isFavorite,
   onToggleFavorite,
   onSelect,
+  selected = false,
   compact = false,
   showDistance = false,
 }) {
@@ -22,9 +23,14 @@ export default function ShopCard({
         <div className="absolute right-2 top-2">
           <FavoriteButton shop={shop} isFavorite={isFavorite} onToggle={onToggleFavorite} />
         </div>
-        {shop.is_open_now && (
+        {shop.is_open_now === true && (
           <span className="absolute bottom-2 left-2 rounded-full bg-matcha-500 px-2 py-0.5 text-xs font-semibold text-white">
             Open
+          </span>
+        )}
+        {shop.is_open_now === false && (
+          <span className="absolute bottom-2 left-2 rounded-full bg-gray-600 px-2 py-0.5 text-xs font-semibold text-white">
+            Closed
           </span>
         )}
       </div>
@@ -55,8 +61,9 @@ export default function ShopCard({
     </>
   );
 
-  const className =
-    "group card block overflow-hidden transition hover:-translate-y-0.5 hover:shadow-lg animate-fade-in";
+  const className = `group card block overflow-hidden transition hover:-translate-y-0.5 hover:shadow-lg animate-fade-in ${
+    selected ? "ring-2 ring-boba-500 ring-offset-2 shadow-lg dark:ring-offset-gray-950" : ""
+  }`;
 
   if (onSelect) {
     return (

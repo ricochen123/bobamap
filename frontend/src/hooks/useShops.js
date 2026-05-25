@@ -11,13 +11,21 @@ export function useShops({
   searchContext = null,
   enabled = true,
   onAreaGeocoded,
+  locationRefreshKey = 0,
 }) {
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const fetchGenerationRef = useRef(0);
 
   const searchContextRef = useRef(searchContext);
   searchContextRef.current = searchContext;
+
+  const nearbyCoords =
+    position ??
+    (searchContext?.source === "gps"
+      ? { lat: searchContext.lat, lng: searchContext.lng }
+      : null);
 
   const fetchShops = useCallback(
     async ({ force = false } = {}) => {
@@ -25,20 +33,27 @@ export function useShops({
         return;
       }
 
-      if (searchMode === "area" && !locationQuery) {
+      const ctx = searchContextRef.current;
+      const coords =
+        position ??
+        (ctx?.source === "gps" ? { lat: ctx.lat, lng: ctx.lng } : null);
+
+      const hasAreaTarget = !!(locationQuery || geocodedQuery);
+      if (searchMode === "area" && !hasAreaTarget) {
         setShops([]);
         setError(null);
         setLoading(false);
-        if (!searchContextRef.current) {
+        if (!ctx) {
           onAreaGeocoded?.(null);
         }
         return;
       }
-      if (searchMode === "nearby" && !position) {
+      if (searchMode === "nearby" && !coords) {
         setLoading(false);
         return;
       }
 
+      const generation = ++fetchGenerationRef.current;
       setLoading(true);
       setError(null);
 
@@ -53,16 +68,15 @@ export function useShops({
           page_size: 50,
         };
 
-        let distanceRef = position;
-        const ctx = searchContextRef.current;
+        let distanceRef = coords;
 
-        if (searchMode === "area" && locationQuery) {
+        if (searchMode === "area" && hasAreaTarget) {
           const geo =
             geocodedQuery ??
             (ctx
               ? { lat: ctx.lat, lng: ctx.lng, label: ctx.label }
               : null) ??
-            (await geocodeLocation(locationQuery));
+            (locationQuery ? await geocodeLocation(locationQuery) : null);
 
           if (!geo) {
             setShops([]);
@@ -77,9 +91,9 @@ export function useShops({
           params.lat = geo.lat;
           params.lng = geo.lng;
           distanceRef = geo;
-        } else if (position) {
-          params.lat = position.lat;
-          params.lng = position.lng;
+        } else if (coords) {
+          params.lat = coords.lat;
+          params.lng = coords.lng;
           if (searchMode === "nearby") {
             onAreaGeocoded?.(null);
           }
@@ -95,20 +109,29 @@ export function useShops({
         }
 
         const data = await shopService.search(params);
+        if (generation !== fetchGenerationRef.current) return;
+
         setShops(data.results || []);
 
         if (searchMode === "area" && (data.results?.length ?? 0) === 0) {
-          setError(`No boba shops found near ${locationQuery}. Try a larger city or wider filters.`);
+          const label = locationQuery || geocodedQuery?.label || "that area";
+          setError(`No boba shops found near ${label}. Try a larger city or wider filters.`);
         }
       } catch (err) {
+        if (generation !== fetchGenerationRef.current) return;
         setError(err.response?.data?.detail || err.message || "Failed to load shops");
         setShops([]);
       } finally {
-        setLoading(false);
+        if (generation === fetchGenerationRef.current) {
+          setLoading(false);
+        }
       }
     },
     [
       position,
+      searchContext?.lat,
+      searchContext?.lng,
+      searchContext?.source,
       filters,
       searchMode,
       locationQuery,
@@ -121,8 +144,28 @@ export function useShops({
   const refetch = useCallback(() => fetchShops({ force: true }), [fetchShops]);
 
   useEffect(() => {
-    fetchShops();
-  }, [fetchShops]);
+    if (searchMode !== "nearby" || !nearbyCoords) return;
+    fetchShops({ force: true });
+  }, [
+    fetchShops,
+    searchMode,
+    nearbyCoords?.lat,
+    nearbyCoords?.lng,
+    locationRefreshKey,
+  ]);
+
+  useEffect(() => {
+    if (searchMode !== "area") return;
+    if (!locationQuery && !geocodedQuery) return;
+    fetchShops({ force: true });
+  }, [
+    fetchShops,
+    searchMode,
+    locationQuery,
+    geocodedQuery?.lat,
+    geocodedQuery?.lng,
+    locationRefreshKey,
+  ]);
 
   return { shops, loading, error, refetch };
 }

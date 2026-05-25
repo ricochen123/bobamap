@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import BobaIcon from "../components/ui/BobaIcon";
 import FavoriteButton from "../components/ui/FavoriteButton";
 import { ShopCardSkeleton } from "../components/ui/LoadingSkeleton";
 import { useFavorites } from "../hooks/useFavorites";
@@ -51,8 +52,8 @@ export default function ShopDetailPage() {
         {hero ? (
           <img src={hero} alt={shop.name} className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full items-center justify-center bg-gradient-to-br from-boba-200 to-taro-400 text-6xl">
-            🧋
+          <div className="flex h-full items-center justify-center bg-gradient-to-br from-boba-200 to-taro-400">
+            <BobaIcon className="h-24 w-24 opacity-80" />
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ShopCard from "../components/shops/ShopCard";
+import BobaIcon from "../components/ui/BobaIcon";
 import { ShopListSkeleton } from "../components/ui/LoadingSkeleton";
 import { useAuth } from "../context/AuthContext";
 import { useFavorites } from "../hooks/useFavorites";
@@ -25,7 +26,10 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto max-w-3xl animate-fade-in p-6">
       <div className="card mb-8 bg-gradient-to-r from-boba-100 to-taro-400/20 p-6 dark:from-gray-900">
-        <h1 className="font-display text-2xl font-bold">Hi, {user.username} 🧋</h1>
+        <h1 className="flex items-center gap-2 font-display text-2xl font-bold">
+          <span>Hi, {user.username}</span>
+          <BobaIcon className="h-7 w-7 shrink-0" />
+        </h1>
         <p className="text-gray-600 dark:text-gray-400">{user.email || "No email set"}</p>
       </div>
 
